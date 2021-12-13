@@ -70,3 +70,59 @@ describe("MultipleWaitReleaseMutex", function () {
     lib.closeMutex(cHandle);
   });
 });
+
+describe("WaitReleaseMutexLocked", function () {
+  it("should create, open and wait/release mutex by multiple instances and throw a locked error", function () {
+    const cHandle = lib.createMutex(
+      "/TestMutex",
+      lib.mutexFileMode.S_IRUSR | lib.mutexFileMode.S_IWUSR
+    );
+    const oHandle = lib.openMutex("/TestMutex");
+
+    assert.ok(cHandle);
+    assert.ok(oHandle);
+
+    lib.tryLockMutex(oHandle);
+
+    assert.throws(() => lib.tryLockMutex(cHandle), /mutex is already locked/);
+
+    lib.releaseMutex(oHandle);
+
+    lib.tryLockMutex(cHandle);
+    lib.releaseMutex(cHandle);
+
+    lib.closeMutex(oHandle);
+    lib.closeMutex(cHandle);
+  });
+});
+
+describe("WaitReleaseMutexTimeout", function () {
+  it("should create, open and wait/release mutex by multiple instances and throw a timeout error", function (done) {
+    const cHandle = lib.createMutex(
+      "/TestMutex",
+      lib.mutexFileMode.S_IRUSR | lib.mutexFileMode.S_IWUSR
+    );
+    const oHandle = lib.openMutex("/TestMutex");
+
+    assert.ok(cHandle);
+    assert.ok(oHandle);
+
+    lib.tryLockMutex(oHandle);
+
+    lib.waitMutexAsync(cHandle, 300, (err) => {
+      if (err !== "mutex timeout expired") {
+        done(err);
+      } else {
+        lib.releaseMutex(oHandle);
+
+        lib.tryLockMutex(cHandle);
+        lib.releaseMutex(cHandle);
+
+        lib.closeMutex(oHandle);
+        lib.closeMutex(cHandle);
+
+        done();
+      }
+    });
+  });
+});

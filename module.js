@@ -45,6 +45,27 @@ function tryLockMutex(handle) {
   }
 }
 
+function waitMutexAsync(handle, waitMs, callback) {
+  setImmediate(() => _waitMutexAsync(handle, waitMs, callback));
+}
+
+function _waitMutexAsync(handle, remainingTimeout, callback) {
+  const res = mutexAddon.TryLockMutex(handle);
+
+  if (res === mutexLocked) {
+    if (remainingTimeout <= 0) {
+      callback(`mutex timeout expired`);
+    } else {
+      setTimeout(
+        () => _waitMutexAsync(handle, remainingTimeout - 20, callback),
+        20
+      );
+    }
+  } else if (res !== 0) {
+    callback(`could not wait for mutex: ${res}`);
+  }
+}
+
 function releaseMutex(handle) {
   const res = mutexAddon.ReleaseMutex(handle);
 
@@ -60,7 +81,8 @@ function closeMutex(handle) {
 module.exports = {
   createMutex,
   openMutex,
-  waitMutex,
+  tryLockMutex,
+  waitMutexAsync,
   releaseMutex,
   closeMutex,
 
