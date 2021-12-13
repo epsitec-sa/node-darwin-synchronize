@@ -65,9 +65,9 @@ NAPI_METHOD(OpenMutex)
   NAPI_ARGV(2)
 
   NAPI_ARGV_UTF8(mutexName, 1000, 0)
-  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 2)
+  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 1)
 
-  mutexHandle->pSemaphore = sem_open(mutexName, MTX_FLAGS_OPEN, S_IRUSR);
+  mutexHandle->pSemaphore = sem_open(mutexName, MTX_FLAGS_OPEN, S_IRUSR, 1);
   if (mutexHandle->pSemaphore == SEM_FAILED)
   {
     NAPI_RETURN_INT32(errno)

@@ -19,11 +19,11 @@ describe("CreateMutex", function () {
 
 describe("OpenMutex", function () {
   it("should create and open mutex", function () {
-    const cHandle = lib.createMutex("/TestMutex");
-    const oHandle = lib.openMutex(
+    const cHandle = lib.createMutex(
       "/TestMutex",
       lib.mutexFileMode.S_IRUSR | lib.mutexFileMode.S_IWUSR
     );
+    const oHandle = lib.openMutex("/TestMutex");
 
     assert.ok(cHandle);
     assert.ok(oHandle);
