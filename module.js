@@ -1,6 +1,7 @@
 const mutexAddon = require("./build/Release/mutex");
 
 const mutexNameMaxLength = 31;
+const mutexLocked = 35;
 
 function createMutex(name, fileMode) {
   if (name.length > mutexNameMaxLength) {
@@ -34,21 +35,18 @@ function openMutex(name) {
   return handle;
 }
 
-function waitMutex(handle, waitTimeMs) {
-  const res = mutexAddon.WaitMutex(handle, waitTimeMs);
+function waitMutex(handle) {
+  const res = mutexAddon.WaitMutex(handle);
 
-  if (res === -1) {
-    throw `mutex timeout expired`;
-  } else if (res === -2) {
-    // Abandoned, should try to wait again
-    waitMutex(handle, waitTimeMs);
+  if (res === mutexLocked) {
+    throw `mutex is locked`;
   } else if (res !== 0) {
     throw `could not wait for mutex: ${res}`;
   }
 }
 
 function releaseMutex(handle) {
-  const res = mutexAddon.ReleaseMutexNW(handle);
+  const res = mutexAddon.ReleaseMutex(handle);
 
   if (res !== 0) {
     throw `could not release mutex: ${res}`;
@@ -87,9 +85,5 @@ module.exports = {
     S_ISUID: 0004000 /* [XSI] set user id on execution */,
     S_ISGID: 0002000 /* [XSI] set group id on execution */,
     S_ISVTX: 0001000 /* [XSI] directory restrcted delete */,
-  },
-
-  waitTime: {
-    Infinite: 0xffffffff,
   },
 };

@@ -32,14 +32,17 @@ describe("OpenMutex", function () {
     lib.closeMutex(cHandle);
   });
 });
-/*
+
 describe("WaitReleaseMutex", function () {
   it("should create and wait/release mutex", function () {
-    const handle = lib.createMutex("Local\\TestMutex");
+    const handle = lib.createMutex(
+      "/TestMutex",
+      lib.mutexFileMode.S_IRUSR | lib.mutexFileMode.S_IWUSR
+    );
 
     assert.ok(handle);
 
-    lib.waitMutex(handle, lib.waitTime.Infinite);
+    lib.waitMutex(handle);
     lib.releaseMutex(handle);
 
     lib.closeMutex(handle);
@@ -48,23 +51,22 @@ describe("WaitReleaseMutex", function () {
 
 describe("MultipleWaitReleaseMutex", function () {
   it("should create, open and wait/release mutex by multiple instances", function () {
-    const cHandle = lib.createMutex("Local\\TestMutex");
-    const oHandle = lib.openMutex(
-      "Local\\TestMutex",
-      lib.mutexAccess.Synchronize
+    const cHandle = lib.createMutex(
+      "/TestMutex",
+      lib.mutexFileMode.S_IRUSR | lib.mutexFileMode.S_IWUSR
     );
+    const oHandle = lib.openMutex("/TestMutex");
 
     assert.ok(cHandle);
     assert.ok(oHandle);
 
-    lib.waitMutex(oHandle, lib.waitTime.Infinite);
+    lib.waitMutex(oHandle);
     lib.releaseMutex(oHandle);
 
-    lib.waitMutex(cHandle, lib.waitTime.Infinite);
+    lib.waitMutex(cHandle);
     lib.releaseMutex(cHandle);
 
     lib.closeMutex(oHandle);
     lib.closeMutex(cHandle);
   });
 });
-*/

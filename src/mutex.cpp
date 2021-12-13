@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <semaphore.h>
-#include <unistd.h> // for close()
 #include <errno.h>
 
 #define MTX_NAME_MAX 31
@@ -77,51 +76,41 @@ NAPI_METHOD(OpenMutex)
 
   NAPI_RETURN_INT32(result)
 }
-/*
-// SharedMemoryHandle* memoryHandle, byte* data, int dataSize -> int
+
+// MutexHandle* mutexHandle-> int
 NAPI_METHOD(WaitMutex)
 {
   int result = 0;
 
-  NAPI_ARGV(3)
+  NAPI_ARGV(1)
 
-  NAPI_ARGV_BUFFER_CAST(struct SharedMemoryHandle *, memoryHandle, 0)
-  NAPI_ARGV_BUFFER_CAST(char *, data, 1)
-  NAPI_ARGV_INT32(dataSize, 2)
+  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 0)
 
-  if (dataSize > memoryHandle->size)
+  int res = sem_trywait(mutexHandle->pSemaphore);
+  if (res != 0)
   {
-    result = -1;
-    NAPI_RETURN_INT32(result)
+    NAPI_RETURN_INT32(errno)
   }
-
-  strncpy(memoryHandle->memoryAddr, data, dataSize);
 
   NAPI_RETURN_INT32(result)
 }
 
-// SharedMemoryHandle* memoryHandle, byte* data, int dataSize -> int
+// MutexHandle* mutexHandle -> int
 NAPI_METHOD(ReleaseMutex)
 {
   int result = 0;
 
-  NAPI_ARGV(3)
+  NAPI_ARGV(1)
 
-  NAPI_ARGV_BUFFER_CAST(struct SharedMemoryHandle *, memoryHandle, 0)
-  NAPI_ARGV_BUFFER_CAST(char *, data, 1)
-  NAPI_ARGV_INT32(dataSize, 2)
+  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 0)
 
-  if (dataSize > memoryHandle->size)
+  if (sem_post(mutexHandle->pSemaphore) != 0)
   {
-    result = -1;
-    NAPI_RETURN_INT32(result)
+    NAPI_RETURN_INT32(errno)
   }
-
-  strncpy(data, memoryHandle->memoryAddr, memoryHandle->size);
-
   NAPI_RETURN_INT32(result)
 }
-*/
+
 // MutexHandle* mutexHandle -> int
 NAPI_METHOD(CloseMutex)
 {
@@ -149,8 +138,8 @@ NAPI_INIT()
 {
   NAPI_EXPORT_FUNCTION(CreateMutex)
   NAPI_EXPORT_FUNCTION(OpenMutex)
-  /*NAPI_EXPORT_FUNCTION(WaitMutex)
-  NAPI_EXPORT_FUNCTION(ReleaseMutex)*/
+  NAPI_EXPORT_FUNCTION(WaitMutex)
+  NAPI_EXPORT_FUNCTION(ReleaseMutex)
   NAPI_EXPORT_FUNCTION(CloseMutex)
 
   NAPI_EXPORT_SIZEOF_STRUCT(MutexHandle)
