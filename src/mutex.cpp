@@ -15,7 +15,6 @@ struct MutexHandle
 {
   char name[MTX_NAME_MAX];
   sem_t *pSemaphore;
-  int size;
 };
 
 // string name, int mutexFileMode, MutexHandle* mutexHandle -> int
