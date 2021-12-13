@@ -9,7 +9,7 @@
 
 #define MTX_NAME_MAX 31
 #define MTX_FLAGS_CREATE (O_CREAT | O_EXCL)
-#define MTX_FLAGS_OPEN (O_RDONLY)
+#define MTX_FLAGS_OPEN (0)
 
 struct MutexHandle
 {
