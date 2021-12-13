@@ -78,7 +78,7 @@ NAPI_METHOD(OpenMutex)
 }
 
 // MutexHandle* mutexHandle-> int
-NAPI_METHOD(WaitMutex)
+NAPI_METHOD(TryLockMutex)
 {
   int result = 0;
 
@@ -138,7 +138,7 @@ NAPI_INIT()
 {
   NAPI_EXPORT_FUNCTION(CreateMutex)
   NAPI_EXPORT_FUNCTION(OpenMutex)
-  NAPI_EXPORT_FUNCTION(WaitMutex)
+  NAPI_EXPORT_FUNCTION(TryLockMutex)
   NAPI_EXPORT_FUNCTION(ReleaseMutex)
   NAPI_EXPORT_FUNCTION(CloseMutex)
 

@@ -35,11 +35,11 @@ function openMutex(name) {
   return handle;
 }
 
-function waitMutex(handle) {
-  const res = mutexAddon.WaitMutex(handle);
+function tryLockMutex(handle) {
+  const res = mutexAddon.TryLockMutex(handle);
 
   if (res === mutexLocked) {
-    throw `mutex is locked`;
+    throw `mutex is already locked`;
   } else if (res !== 0) {
     throw `could not wait for mutex: ${res}`;
   }

@@ -42,7 +42,7 @@ describe("WaitReleaseMutex", function () {
 
     assert.ok(handle);
 
-    lib.waitMutex(handle);
+    lib.tryLockMutex(handle);
     lib.releaseMutex(handle);
 
     lib.closeMutex(handle);
@@ -60,10 +60,10 @@ describe("MultipleWaitReleaseMutex", function () {
     assert.ok(cHandle);
     assert.ok(oHandle);
 
-    lib.waitMutex(oHandle);
+    lib.tryLockMutex(oHandle);
     lib.releaseMutex(oHandle);
 
-    lib.waitMutex(cHandle);
+    lib.tryLockMutex(cHandle);
     lib.releaseMutex(cHandle);
 
     lib.closeMutex(oHandle);
