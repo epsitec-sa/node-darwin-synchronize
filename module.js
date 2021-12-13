@@ -1,9 +1,15 @@
 const mutexAddon = require("./build/Release/mutex");
 
-function createMutex(name, sddlString) {
+const mutexNameMaxLength = 31;
+
+function createMutex(name, fileMode) {
+  if (name.length > mutexNameMaxLength) {
+    throw `mutex name length cannot be greater than ${mutexNameMaxLength}`;
+  }
+
   const handle = Buffer.alloc(mutexAddon.sizeof_MutexHandle);
 
-  const res = mutexAddon.CreateMutexNW(name, sddlString || "", handle);
+  const res = mutexAddon.CreateMutex(name, fileMode, handle);
 
   if (res !== 0) {
     throw `could not create mutex for object ${name}: ${res}`;
@@ -12,10 +18,14 @@ function createMutex(name, sddlString) {
   return handle;
 }
 
-function openMutex(name, mutexAccess) {
+function openMutex(name) {
+  if (name.length > mutexNameMaxLength) {
+    throw `mutex name length cannot be greater than ${mutexNameMaxLength}`;
+  }
+
   const handle = Buffer.alloc(mutexAddon.sizeof_MutexHandle);
 
-  const res = mutexAddon.OpenMutexNW(name, mutexAccess, handle);
+  const res = mutexAddon.OpenMutex(name, handle);
 
   if (res !== 0) {
     throw `could not open mutex for object ${name}: ${res}`;
@@ -56,13 +66,29 @@ module.exports = {
   releaseMutex,
   closeMutex,
 
-  mutexAccess: {
-    Delete: 0x00010000,
-    ReadControl: 0x00020000,
-    Synchronize: 0x00100000,
-    WriteDac: 0x00040000,
-    WriteOwner: 0x00080000,
+  mutexFileMode: {
+    S_IRWXU: 0000700 /* [XSI] RWX mask for owner */,
+    S_IRUSR: 0000400 /* [XSI] R for owner */,
+    S_IWUSR: 0000200 /* [XSI] W for owner */,
+    S_IXUSR: 0000100 /* [XSI] X for owner */,
+
+    /* Read, write, execute/search by group */
+    S_IRWXG: 0000070 /* [XSI] RWX mask for group */,
+    S_IRGRP: 0000040 /* [XSI] R for group */,
+    S_IWGRP: 0000020 /* [XSI] W for group */,
+    S_IXGRP: 0000010 /* [XSI] X for group */,
+
+    /* Read, write, execute/search by others */
+    S_IRWXO: 0000007 /* [XSI] RWX mask for other */,
+    S_IROTH: 0000004 /* [XSI] R for other */,
+    S_IWOTH: 0000002 /* [XSI] W for other */,
+    S_IXOTH: 0000001 /* [XSI] X for other */,
+
+    S_ISUID: 0004000 /* [XSI] set user id on execution */,
+    S_ISGID: 0002000 /* [XSI] set group id on execution */,
+    S_ISVTX: 0001000 /* [XSI] directory restrcted delete */,
   },
+
   waitTime: {
     Infinite: 0xffffffff,
   },

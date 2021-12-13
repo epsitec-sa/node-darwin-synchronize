@@ -1,117 +1,127 @@
 #include <node_api.h>
 #include <napi-macros.h>
 
-#include <windows.h>
-#include <sddl.h>
-#include <synchapi.h>
-#include <string>
+#include <fcntl.h> // for flags O_CREAT etc..
+#include <stdio.h>
+#include <string.h>
+#include <semaphore.h>
+#include <unistd.h> // for close()
+#include <errno.h>
+
+#define MTX_NAME_MAX 31
+#define MTX_FLAGS_CREATE (O_CREAT | O_EXCL)
+#define MTX_FLAGS_OPEN (O_RDONLY)
 
 struct MutexHandle
 {
-  HANDLE hMutex;
+  char name[MTX_NAME_MAX];
+  sem_t *pSemaphore;
+  int size;
 };
 
-// string name, string sddl, MutexHandle* mutexHandle -> int
-NAPI_METHOD(CreateMutexNW)
+// string name, int mutexFileMode, MutexHandle* mutexHandle -> int
+NAPI_METHOD(CreateMutex)
 {
   int result = 0;
 
   NAPI_ARGV(3)
 
-  NAPI_ARGV_UTF8(objectNameA, 1000, 0)
-  NAPI_ARGV_UTF8(sddlStringA, 1000, 1)
+  NAPI_ARGV_UTF8(mutexName, 1000, 0)
+  NAPI_ARGV_INT32(mutexFileMode, 1)
   NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 2)
 
-  LPSECURITY_ATTRIBUTES pAttributes = NULL;
-  SECURITY_ATTRIBUTES attributes;
-
-  if (strcmp(sddlStringA, "") != 0)
+  mutexHandle->pSemaphore = sem_open(mutexName, MTX_FLAGS_CREATE, mutexFileMode, 1);
+  if (mutexHandle->pSemaphore == SEM_FAILED)
   {
-    ZeroMemory(&attributes, sizeof(attributes));
-    attributes.nLength = sizeof(attributes);
-    ConvertStringSecurityDescriptorToSecurityDescriptor(
-      sddlStringA,
-      SDDL_REVISION_1,
-      &attributes.lpSecurityDescriptor,
-      NULL);
+    if (errno == EEXIST)
+    { // mutex already exists (has not been unlinked and is abandoned)
+      printf("mutex is abandoned\n");
+      if (sem_unlink(mutexName) != 0)
+      {
+        NAPI_RETURN_INT32(errno)
+      }
+      mutexHandle->pSemaphore = sem_open(mutexName, MTX_FLAGS_CREATE, mutexFileMode, 1);
+      if (mutexHandle->pSemaphore == SEM_FAILED)
+      {
+        NAPI_RETURN_INT32(errno)
+      }
+    }
+    else
+    {
+      NAPI_RETURN_INT32(errno)
+    }
   }
 
-  mutexHandle->hMutex = CreateMutex(pAttributes, FALSE, objectNameA);
-  if (mutexHandle->hMutex == NULL)
-  {
-    result = GetLastError();
-  }
+  strcpy(mutexHandle->name, mutexName);
 
   NAPI_RETURN_INT32(result)
 }
 
-// string name, int mutexAccess, MutexHandle* mutexHandle -> int
-NAPI_METHOD(OpenMutexNW)
+// string name, MutexHandle* mutexHandle -> int
+NAPI_METHOD(OpenMutex)
 {
   int result = 0;
-
-  NAPI_ARGV(3)
-
-  NAPI_ARGV_UTF8(objectNameA, 1000, 0)
-  NAPI_ARGV_INT32(mutexAccess, 1)
-  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 2)
-
-  mutexHandle->hMutex = OpenMutex(mutexAccess, FALSE, objectNameA);
-  if (mutexHandle->hMutex == NULL)
-  {
-    result = GetLastError();
-  }
-
-  NAPI_RETURN_INT32(result)
-}
-
-// MutexHandle* mutexHandle, int waitTimeMs -> int
-NAPI_METHOD(WaitMutex)
-{
-  int result = 0;
-  DWORD res = 0;
 
   NAPI_ARGV(2)
 
-  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 0)
-  NAPI_ARGV_INT32(waitTimeMs, 1)
+  NAPI_ARGV_UTF8(mutexName, 1000, 0)
+  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 2)
 
-  res = WaitForSingleObject(mutexHandle->hMutex, waitTimeMs);
-  if (res == WAIT_FAILED)
+  mutexHandle->pSemaphore = sem_open(mutexName, MTX_FLAGS_OPEN, S_IRUSR);
+  if (mutexHandle->pSemaphore == SEM_FAILED)
   {
-    result = GetLastError();
+    NAPI_RETURN_INT32(errno)
   }
-  else if (res == WAIT_TIMEOUT)
-  {
-    result = -1;
-  }
-  else if (res == WAIT_ABANDONED)
-  {
-    result = -2;
-  }
+
+  strcpy(mutexHandle->name, mutexName);
 
   NAPI_RETURN_INT32(result)
 }
-
-// MutexHandle* mutexHandle -> int
-NAPI_METHOD(ReleaseMutexNW)
+/*
+// SharedMemoryHandle* memoryHandle, byte* data, int dataSize -> int
+NAPI_METHOD(WaitMutex)
 {
   int result = 0;
-  DWORD res = 0;
 
-  NAPI_ARGV(1)
+  NAPI_ARGV(3)
 
-  NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 0)
+  NAPI_ARGV_BUFFER_CAST(struct SharedMemoryHandle *, memoryHandle, 0)
+  NAPI_ARGV_BUFFER_CAST(char *, data, 1)
+  NAPI_ARGV_INT32(dataSize, 2)
 
-  res = ReleaseMutex(mutexHandle->hMutex);
-  if (res == 0)
+  if (dataSize > memoryHandle->size)
   {
-    result = GetLastError();
+    result = -1;
+    NAPI_RETURN_INT32(result)
   }
+
+  strncpy(memoryHandle->memoryAddr, data, dataSize);
 
   NAPI_RETURN_INT32(result)
 }
 
+// SharedMemoryHandle* memoryHandle, byte* data, int dataSize -> int
+NAPI_METHOD(ReleaseMutex)
+{
+  int result = 0;
+
+  NAPI_ARGV(3)
+
+  NAPI_ARGV_BUFFER_CAST(struct SharedMemoryHandle *, memoryHandle, 0)
+  NAPI_ARGV_BUFFER_CAST(char *, data, 1)
+  NAPI_ARGV_INT32(dataSize, 2)
+
+  if (dataSize > memoryHandle->size)
+  {
+    result = -1;
+    NAPI_RETURN_INT32(result)
+  }
+
+  strncpy(data, memoryHandle->memoryAddr, memoryHandle->size);
+
+  NAPI_RETURN_INT32(result)
+}
+*/
 // MutexHandle* mutexHandle -> int
 NAPI_METHOD(CloseMutex)
 {
@@ -121,18 +131,26 @@ NAPI_METHOD(CloseMutex)
 
   NAPI_ARGV_BUFFER_CAST(struct MutexHandle *, mutexHandle, 0)
 
-  CloseHandle(mutexHandle->hMutex);
+  // close the file descriptor
+  if (sem_close(mutexHandle->pSemaphore) != 0)
+  {
+    NAPI_RETURN_INT32(errno)
+  }
+
+  if (sem_unlink(mutexHandle->name) != 0)
+  {
+    NAPI_RETURN_INT32(errno)
+  }
 
   NAPI_RETURN_INT32(result)
 }
 
-
 NAPI_INIT()
 {
-  NAPI_EXPORT_FUNCTION(CreateMutexNW)
-  NAPI_EXPORT_FUNCTION(OpenMutexNW)
-  NAPI_EXPORT_FUNCTION(WaitMutex)
-  NAPI_EXPORT_FUNCTION(ReleaseMutexNW)
+  NAPI_EXPORT_FUNCTION(CreateMutex)
+  NAPI_EXPORT_FUNCTION(OpenMutex)
+  /*NAPI_EXPORT_FUNCTION(WaitMutex)
+  NAPI_EXPORT_FUNCTION(ReleaseMutex)*/
   NAPI_EXPORT_FUNCTION(CloseMutex)
 
   NAPI_EXPORT_SIZEOF_STRUCT(MutexHandle)
