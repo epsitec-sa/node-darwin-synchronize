@@ -1,2 +1,3 @@
-# node-darwin-synchronize
-Provides low level posix/mach functions concerning process synchronization
+# node-windows-synchronize
+
+Provides low level win API functions concerning process synchronization
