@@ -51,6 +51,9 @@ function waitMutexAsync(handle, waitMs, callback) {
 
 function _waitMutexAsync(handle, remainingTimeout, callback) {
   const res = mutexAddon.TryLockMutex(handle);
+  if (res === 0) {
+    callback();
+  }
 
   if (res === mutexLocked) {
     if (remainingTimeout <= 0) {
